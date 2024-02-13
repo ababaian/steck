@@ -18,13 +18,13 @@ CONTAINER_VERSION='logan-base:0.0.1'
 # Usage
 function usage {
   echo ""
-  echo "Usage: docker exec logan-base -d <s3://bucket/rbz.cm> -i <s3://bucket/contigs.fa> [OPTIONS]"
+  echo "Usage: docker exec logan-base -q rbz.cm -d contigs.fa -o test [OPTIONS]"
   echo ""
   echo "    -h    Show this help/usage message"
   echo ""
   echo "    Required Fields"
   echo "    -q    Query database file. '.cm' (infernal)"
-  echo "    -d    Sequence database file. S3 bucket path for input contigs [s3://bucket/contigs.fa]"
+  echo "    -d    Sequence search file. S3 bucket path for input contigs [s3://bucket/contigs.fa]"
   echo ""
   echo "    Alignment Parameters"
   echo "    -a    Alignment software ['infernal' (default) | 'diamond' (NA) | 'rdrp' (NA) ]"
@@ -37,7 +37,8 @@ function usage {
   echo ""
   echo "    Output options"
   echo "    -b    Base directory in container [/home/logan/]"
-  echo "    -o    <output_filename_prefix> [Defaults to SRA_ACCESSION]"
+  echo "    -3    S3 Bucket output"
+  echo "    -o    <output_prefix> [Defaults]"
   echo ""
   echo "    Outputs Uploaded to s3: "
   echo "          <output_prefix>.fq.xxxx ... <output_prefix>.fq.yyyy"
@@ -51,26 +52,27 @@ function usage {
 # Generate random alpha-numeric for run-id
 RUNID=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1 )
 
+# Alignment files
+FA='mdv.fa'
+
 # Output options -do
 BASEDIR='/home/logan'
-OUTNAME=${OUTNAME:-'test'}
-
-# Alignment files
-QUERY=${QUERY:-'dvr5.cm'}
-DB=${DB:-'mdv.fa'}
+S3=''
+OUTNAME='test'
 
 # Aligner Options
-ALIGNER=${ALIGNER:-'infernal'}
+QUERY='dvr5.cm'
+ALIGNER='infernal'
 THREADS='1'
 
 
-while getopts q:d:a:n:b:oh FLAG; do
+while getopts q:f:a:n:b:3:o:h FLAG; do
   case $FLAG in
     # Search Files  -----------
     q)
       QUERY=$OPTARG
       ;;
-    d)
+    f)
       DB=$OPTARG
       ;;
     # Aligner Options ---------
@@ -87,6 +89,9 @@ while getopts q:d:a:n:b:oh FLAG; do
     o)
       OUTNAME=$OPTARG
       ;;
+    3)
+      S3=$OPTARG
+      ;;
     h)  #show help ----------
       usage
       ;;
@@ -98,15 +103,28 @@ while getopts q:d:a:n:b:oh FLAG; do
 done
 
 
+# RUN INFERNAL ============================================
+echo RUNID is: $RUNID
+
 # run INFERNAL
 cmsearch \
   -o /dev/null \
-  --cpu 1 -Z 1000 \
+  --cpu $THREADS -Z 1000 \
   --tblout $OUTNAME.tblout \
   $QUERY \
   $DB
       
 cat $OUTNAME.tblout
+
+# If an S3 Bucket is provided, upload the output to S3
+# Else print to STDOUT
+if [ "$S3" != '' ]
+then
+	#aws s3 cp --only-show-errors $OUTNAME.tblout $S3
+	aws s3 cp $OUTNAME.tblout $S3
+else
+	cat $OUTNAME.tblout
+fi
 
 # RUN UPLOAD ==============================================
 #aws s3 cp --only-show-errors $SRA.$BL_N.bam s3://$S3_BUCKET/bam-blocks/$SRA/
