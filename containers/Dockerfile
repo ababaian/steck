@@ -2,14 +2,15 @@
 # LOGAN-BASE CONTAINER ====================================
 #==========================================================
 # Docker Base: amazon linux2
-FROM amazonlinux:2 AS logan-base
+FROM amazonlinux:2 AS logan
 
 ## Build/test container for logan
 # sudo yum install -y docker git
 # sudo service docker start
 # git clone https://github.com/ababaian/logan.git; cd logan
-# sudo docker build -t logan-base:0 -t logan-base:latest -f docker/Dockerfile .
-# sudo docker run --rm --entrypoint /bin/bash -it logan-align:0
+# sudo docker build ./ -t logan:latest -t logan
+# sudo docker run --rm --entrypoint /bin/bash -it logan:latest
+# sudo docker run logan
 
 #==========================================================
 # Container Meta-data =====================================
@@ -30,7 +31,7 @@ LABEL software.license="GPLv3"
 LABEL tags="aws-cli, INFERNAL"
 
 # Software versions
-ENV INFERNALVERSION='1.1.4'
+ENV INFERNALVERSION='1.1.5'
 
 #==========================================================
 # Dependencies ============================================
@@ -54,11 +55,11 @@ RUN curl -O https://bootstrap.pypa.io/get-pip.py &&\
 RUN pip install boto3 awscli
 RUN yum -y install jq
 
-# Libraries for htslib
-#RUN yum -y install gcc make \
-#    unzip bzip2 bzip2-devel xz-devel zlib-devel \
-#    curl-devel openssl-devel \
-#    ncurses-devel
+# Libraries for INFERNAL
+RUN yum -y install gcc make \
+    unzip bzip2 bzip2-devel xz-devel zlib-devel \
+    curl-devel openssl-devel \
+    ncurses-devel
 
 #==========================================================
 # Install Software ========================================
@@ -69,14 +70,8 @@ RUN yum -y install jq
 RUN wget http://eddylab.org/infernal/infernal-"$INFERNALVERSION"-linux-intel-gcc.tar.gz &&\
   tar -xvf infernal* &&\
   cd infernal* &&\
-  bash configure && make && make install &&\
+  bash configure --prefix /usr/local/ && make && make install &&\
   cd ..
-
-# binaries copy (does not work)
-#  chmod 755 infernal*/binaries/* &&\
-#  cp infernal*/binaries/* /usr/local/bin/ &&\
-#  rm -rf infernal*
-
 
 #==========================================================
 # logan Initialize =====================================
@@ -90,6 +85,11 @@ RUN echo 'alias logan="sudo -u logan"' >> /root/.bashrc
 
 WORKDIR /home/logan
 
+COPY logan.sh /home/logan/
+RUN  chmod 755 logan.sh
+COPY dvr5.cm  /home/logan/
+COPY mdv.fa   /home/logan/
+
 # Increase the default chunksize for `aws s3 cp`.  By default it is 8MB,
 # which results in a very high number of PUT and POST requests.  These
 # numbers have NOT been experimented on, but chosen to be just below the
@@ -102,4 +102,4 @@ RUN aws configure set default.s3.multipart_threshold 4GB \
 #==========================================================
 # ENTRYPOINT ==============================================
 #==========================================================
-# N/A
+ENTRYPOINT ["./logan.sh", "logan"]
