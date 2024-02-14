@@ -43,8 +43,10 @@ RUN yum -y install vim htop time
 
 # Update Core
 RUN yum -y update
-RUN yum -y install tar wget gzip which sudo shadow-utils \
-           util-linux byacc
+RUN yum -y install tar wget gzip \
+           which sudo shadow-utils \
+           util-linux byacc \
+           glibc groff less jq
 
 # Python3
 RUN yum -y install python3 python3-devel
@@ -53,15 +55,17 @@ RUN curl -O https://bootstrap.pypa.io/get-pip.py &&\
     python3 get-pip.py &&\
     rm get-pip.py
 
-# AWS S3
-RUN pip install boto3 awscli
-RUN yum -y install jq
-
 # Libraries for INFERNAL
 RUN yum -y install gcc make \
     unzip bzip2 bzip2-devel xz-devel zlib-devel \
     curl-devel openssl-devel \
     ncurses-devel
+
+# AWS S3
+RUN pip install boto3
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" &&\
+    unzip awscliv2.zip &&\
+    ./aws/install
 
 #==========================================================
 # Install Software ========================================
@@ -76,7 +80,7 @@ RUN wget http://eddylab.org/infernal/infernal-"$INFERNALVERSION"-linux-intel-gcc
   cd ..
 
 #==========================================================
-# logan Initialize =====================================
+# logan Initialize ========================================
 #==========================================================
 # Set working directory to /home/logan
 # Create a logan user fro use of FUSE / fusera
@@ -98,7 +102,9 @@ COPY mdv.fa   /home/logan/
 # max size for a single-part upload (5GB).  I haven't pushed it higher
 # because I don't want to test the edge cases where a filesize is around
 # the part limit.
-RUN aws configure set default.s3.multipart_threshold 4GB \
+# Configure AWS Locally
+RUN aws configure set default.region us-east-1 \
+ && aws configure set default.s3.multipart_threshold 4GB \
  && aws configure set default.s3.multipart_chunksize 4GB
 
 #==========================================================
