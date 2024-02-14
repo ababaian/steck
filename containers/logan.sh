@@ -18,32 +18,30 @@ CONTAINER_VERSION='logan-base:0.0.1'
 # Usage
 function usage {
   echo ""
-  echo "Usage: docker exec logan-base -q rbz.cm -d contigs.fa -o test [OPTIONS]"
+  echo "Usage: docker run logan:latest [OPTIONS]"
   echo ""
   echo "    -h    Show this help/usage message"
   echo ""
   echo "    Required Fields"
   echo "    -q    Query database file. '.cm' (infernal)"
-  echo "    -d    Sequence search file. S3 bucket path for input contigs [s3://bucket/contigs.fa]"
+  echo "    -f    Fasta search file. S3 bucket path for input contigs [s3://bucket/contigs.fa]"
   echo ""
   echo "    Alignment Parameters"
   echo "    -a    Alignment software ['infernal' (default) | 'diamond' (NA) | 'rdrp' (NA) ]"
   echo "    -n    parallel CPU threads to use where applicable  [1]"
   echo ""
   echo "    AWS / S3 Bucket parameters"
-  echo "    -w    Flag. Imports AWS IAM from this ec2-instance for container"
-  echo "          EC2 instance must have been launched with correct IAM"
-  echo "          (No alternative yet, hard set to TRUE)"
   echo ""
   echo "    Output options"
+  echo "    -v    Flag. Verbose output"
   echo "    -b    Base directory in container [/home/logan/]"
-  echo "    -3    S3 Bucket output"
+  echo "    -3    S3 Bucket Directory to output output"
   echo "    -o    <output_prefix> [Defaults]"
   echo ""
   echo "    Outputs Uploaded to s3: "
   echo "          <output_prefix>.fq.xxxx ... <output_prefix>.fq.yyyy"
   echo ""
-  echo "ex: docker exec serratus-dl -u localhost:8000"
+  echo "ex: sudo docker run logan -q dvr5.cm -f mdv.fa -o utest"
   false
   exit 1
 }
@@ -52,6 +50,7 @@ function usage {
 # Generate random alpha-numeric for run-id
 RUNID=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 8 | head -n 1 )
 
+# Set Default Parameters
 # Alignment files
 FA='mdv.fa'
 
@@ -65,15 +64,17 @@ QUERY='dvr5.cm'
 ALIGNER='infernal'
 THREADS='1'
 
+# Options
+VERBOSE='FALSE'
 
-while getopts q:f:a:n:b:3:o:h FLAG; do
+while getopts q:f:a:n:b:3:o:vh FLAG; do
   case $FLAG in
     # Search Files  -----------
     q)
       QUERY=$OPTARG
       ;;
     f)
-      DB=$OPTARG
+      FA=$OPTARG
       ;;
     # Aligner Options ---------
     a)
@@ -92,6 +93,9 @@ while getopts q:f:a:n:b:3:o:h FLAG; do
     3)
       S3=$OPTARG
       ;;
+    v)
+      VERBOSE='TRUE'
+      ;;
     h)  #show help ----------
       usage
       ;;
@@ -104,23 +108,44 @@ done
 
 
 # RUN INFERNAL ============================================
-echo RUNID is: $RUNID
+echo "=========== LOGAN ==========="
+echo ""
+echo "Query:  $QUERY"
+echo "Fasta:  $FA"
+echo "Tool:   $ALIGNER"
+echo "Thread: $THREADS"
+echo "Output: $OUTNAME"
+echo ""
 
-# run INFERNAL
-cmsearch \
-  -o /dev/null \
-  --cpu $THREADS -Z 1000 \
-  --tblout $OUTNAME.tblout \
-  $QUERY \
-  $DB
-      
-cat $OUTNAME.tblout
+if [[ $VERBOSE == 'TRUE' ]]
+then 
+  # run INFERNAL
+  /usr/bin/time -v cmsearch \
+    -o /dev/null \
+    --cpu $THREADS -Z 1000 \
+    --tblout $OUTNAME.tblout \
+    $QUERY \
+    $FA
+
+  # Cat output        
+  cat $OUTNAME.tblout
+else
+    cmsearch \
+    -o /dev/null \
+    --cpu $THREADS -Z 1000 \
+    --tblout $OUTNAME.tblout \
+    $QUERY \
+    $FA
+fi
 
 # If an S3 Bucket is provided, upload the output to S3
 # Else print to STDOUT
-if [ "$S3" != '' ]
+if [ "$S3" == "s3://*" ]
 then
 	#aws s3 cp --only-show-errors $OUTNAME.tblout $S3
+  echo "uploading output:"
+  echo "  aws s3 cp $OUTNAME.tblout $S3"
+
 	aws s3 cp $OUTNAME.tblout $S3
 else
 	cat $OUTNAME.tblout

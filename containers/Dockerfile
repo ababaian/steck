@@ -8,8 +8,10 @@ FROM amazonlinux:2 AS logan
 # sudo yum install -y docker git
 # sudo service docker start
 # git clone https://github.com/ababaian/logan.git; cd logan
-# sudo docker build ./ -t logan:latest -t logan
+# sudo docker build ./ -t logan:latest -t logan:dev -t logan
+## Interactive
 # sudo docker run --rm --entrypoint /bin/bash -it logan:latest
+## Test script
 # sudo docker run logan
 
 #==========================================================
@@ -37,7 +39,7 @@ ENV INFERNALVERSION='1.1.5'
 # Dependencies ============================================
 #==========================================================
 # For development only
-RUN yum -y install vim htop
+RUN yum -y install vim htop time
 
 # Update Core
 RUN yum -y update
@@ -102,4 +104,4 @@ RUN aws configure set default.s3.multipart_threshold 4GB \
 #==========================================================
 # ENTRYPOINT ==============================================
 #==========================================================
-ENTRYPOINT ["./logan.sh", "logan"]
+ENTRYPOINT ["./logan.sh"]
