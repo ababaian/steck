@@ -11,7 +11,7 @@ set -eu
 #
 
 # Job-Parameter file
-TOPO='angelCrest'
+TOPO='apron.testdata'
 
 # Steck Job Parameters
 JNAME='logan-steck-onBelayTest' # job-name
@@ -45,14 +45,14 @@ do
     --parameters outname="$POUTNAME",fa="$PFA",s3="$PS3" \
     --container-overrides '{
       "command": [
-        "-n", "2",
+        "-n", "1",
         "-o", "Ref::outname",
         "-f", "Ref::fa",
         "-3", "Ref::s3"
       ],
       "resourceRequirements": [
       {
-        "value": "2",
+        "value": "1",
         "type": "VCPU"
       },
       {
