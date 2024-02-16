@@ -1,10 +1,11 @@
 #!/bin/bash
+# 
+# usage: ./build_containers.sh [local|push]
 set -eu
-# Build and push container images in parallel.
-images=${@:-infernal}
 
-DOCKERHUB_USER=${DOCKERHUB_USER:-local}
-DOCKER_BUILD=${DOCKER_BUILD:-sudo docker}
+#DOCKERHUB_USER=${DOCKERHUB_USER:-local}
+DOCKER=${DOCKER:-sudo docker}
+ECR="$1"
 
 # Container Version
 #VERSION=0 # Dev version
@@ -12,27 +13,24 @@ VERSION=0.0.1
 
 # DOCKERHUB_USER='serratusbio'
 # sudo docker login
+$DOCKER build \
+  -t logan -t logan:latest \
+  -t logan:$VERSION .
 
-$DOCKER_BUILD build -f Dockerfile \
-  -t logan-base -t logan-base:latest \
-  -t logan-base:$VERSION .
+# Push to ECR
+if [ $ECR == 'push' ]
+then
+  echo "Push to ECR"
+  # Push to ECR (credentials implicit)
+  $DOCKER tag logan:latest public.ecr.aws/q4q7t4w2/logan:latest
 
-for img in $images; do
-    (
-        $DOCKER_BUILD build -f "logan-$img/Dockerfile" \
-          -t logan-$img \
-          -t $DOCKERHUB_USER/logan-$img \
-          -t $DOCKERHUB_USER/logan-$img:$VERSION \
-          -t $DOCKERHUB_USER/logan-$img:latest .
+  # Get AWS credentials
+  aws ecr-public get-login-password --region us-east-1 \
+      | sudo docker login --username AWS \
+        --password-stdin public.ecr.aws/q4q7t4w2
 
-        if [ "$DOCKERHUB_USER" == "local" ]; then
-          echo "No DOCKERHUB_USER set. Images are local only"
-        else 
-        # Push container images to repo
-          $DOCKER_BUILD push $DOCKERHUB_USER/logan-$img
-          echo "Done pushing logan-$img on $DOCKERHUB_USER"
-        fi
-    ) &
-done
+  $DOCKER push public.ecr.aws/q4q7t4w2/logan:latest
+fi
 
-wait
+# Run unit-test
+$DOCKER run logan

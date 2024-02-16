@@ -14,6 +14,17 @@ FROM amazonlinux:2 AS logan
 ## Test script
 # sudo docker run logan
 
+## Build/push container for logan ECR
+## aws ecr-public get-login-password --region us-east-1 \
+##   | sudo docker login --username AWS \
+##       --password-stdin public.ecr.aws/q4q7t4w2
+##
+## sudo docker build ./ -t logan:latest -t logan:dev -t logan
+## sudo docker tag logan:latest public.ecr.aws/q4q7t4w2/logan:latest
+##
+## sudo docker push public.ecr.aws/q4q7t4w2/logan:latest
+##
+
 #==========================================================
 # Container Meta-data =====================================
 #==========================================================

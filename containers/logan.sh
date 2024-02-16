@@ -1,6 +1,6 @@
 #!/bin/bash
 # ENTRYPOINT SCRIPT ===================
-# logan-base.sh
+# logan.sh
 # =====================================
 set -eu
 #
@@ -71,7 +71,13 @@ THREADS='1'
 AWSCRED='FALSE'
 VERBOSE='FALSE'
 
-while getopts q:f:a:n:b:3:o:v:Ah FLAG; do
+# Check if Array Job
+if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX-}" ]]
+then
+  AWS_BATCH_JOB_ARRAY_INDEX='n/a'
+fi
+
+while getopts q:f:a:n:b:3:o:vAh FLAG; do
   case $FLAG in
     # Search Files  -----------
     q)
@@ -134,10 +140,18 @@ echo "Fasta:  $FA"
 echo "Tool:   $ALIGNER"
 echo "Thread: $THREADS"
 echo "Output: $OUTNAME"
+echo "BArray: $AWS_BATCH_JOB_ARRAY_INDEX"
 echo ""
 
-echo 'Test S3 permissions with ls'
-aws s3 ls s3://lovelywater2/
+# Test for internet/s3 connectivity
+if [[ $VERBOSE == 'TRUE' ]]
+then 
+  echo 'Test Internet connectivity'
+  wget https://serratus-public.s3.amazonaws.com/var/aws-test-token.jpg
+
+  echo 'Test AWS/S3 permissions '
+  aws s3 cp s3://serratus-public/var/aws-test-token.jpg ./
+fi
 
 if [[ $FA == s3://* ]]
 then
@@ -163,7 +177,7 @@ then
   # Cat output        
   cat $OUTNAME.tblout
 else
-    cmsearch \
+  cmsearch \
     -o /dev/null \
     --cpu $THREADS -Z 1000 \
     --tblout $OUTNAME.tblout \
