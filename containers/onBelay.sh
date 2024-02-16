@@ -34,7 +34,7 @@ do
   # Read Fasta S3 file from testPitch (field 2)
   PFA=$(echo $line | cut -f2 -d' ' - )
   # Job-name (field 3)
-  JNAME=logan-steck-n2-$(echo $line | cut -f3 -d' ' - )
+  JNAME=klahanie-$(echo $line | cut -f3 -d' ' - )
 
   # Submit Batch Job
   aws batch submit-job \
@@ -56,9 +56,10 @@ do
         "type": "VCPU"
       },
       {
-        "value": "2024",
+        "value": "1600",
         "type": "MEMORY"
       } ]
-    }'
+    }' &
+    sleep 0.05 # limit to 20 transactions per second
 
 done < $TOPO
