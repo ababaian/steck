@@ -2,7 +2,7 @@
 # LOGAN-BASE CONTAINER ====================================
 #==========================================================
 # Docker Base: amazon linux2
-FROM amazonlinux:2 AS logan
+FROM amazonlinux:2 AS logan_base
 
 ## Build/test container for logan
 # sudo yum install -y docker git
@@ -49,7 +49,7 @@ ENV INFERNALVERSION='1.1.5'
 #==========================================================
 # Dependencies ============================================
 #==========================================================
-# For development only
+# For development
 RUN yum -y install vim htop time
 
 # Update Core
@@ -91,19 +91,49 @@ RUN wget http://eddylab.org/infernal/infernal-"$INFERNALVERSION"-linux-intel-gcc
   cd ..
 
 #==========================================================
+# Build Runtime ===========================================
+#==========================================================
+FROM amazonlinux:2 AS logan
+
+# Container Information
+ARG PROJECT='logan'
+ARG TYPE='runtime'
+ARG VERSION='0.0.1'
+
+# Additional Metadata
+LABEL container.base.image="amazonlinux:2"
+LABEL project.name=${PROJECT}
+LABEL project.website="https://github.com/ababaian/logan"
+LABEL container.type=${TYPE}
+LABEL container.version=${VERSION}
+LABEL container.description="logan-runtime image"
+LABEL software.license="GPLv3"
+LABEL tags="aws-cli, INFERNAL"
+
+#==========================================================
 # logan Initialize ========================================
 #==========================================================
-# Set working directory to /home/logan
-# Create a logan user fro use of FUSE / fusera
-RUN adduser logan
+# Set Variables
 ARG BASEDIR=/home/logan
 ENV BASEDIR=/home/logan
-RUN echo 'alias logan="sudo -u logan"' >> /root/.bashrc
-
 WORKDIR /home/logan
 
+# Set working directory to /home/logan
+# Create a logan user fro use of FUSE / fusera
+RUN yum -y install time gzip unzip \
+                   wget curl sudo \
+                   shadow-utils &&\
+    adduser logan &&\
+    echo 'alias logan="sudo -u logan"' >> /root/.bashrc &&\
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" &&\
+    unzip awscliv2.zip &&\
+    ./aws/install
+
+# INFERNAL
+COPY --from=logan_base /usr/local/bin/cmsearch /usr/local/bin/
+
+# Copy Scripts
 COPY logan.sh /home/logan/
-RUN  chmod 755 logan.sh
 COPY dvr5.cm  /home/logan/
 COPY mdv.fa   /home/logan/
 
@@ -114,10 +144,10 @@ COPY mdv.fa   /home/logan/
 # because I don't want to test the edge cases where a filesize is around
 # the part limit.
 # Configure AWS Locally
-RUN aws configure set default.region us-east-1 \
+RUN chmod 755 logan.sh  \
+ && aws configure set default.region us-east-1 \
  && aws configure set default.s3.multipart_threshold 4GB \
  && aws configure set default.s3.multipart_chunksize 4GB
-
 #==========================================================
 # ENTRYPOINT ==============================================
 #==========================================================

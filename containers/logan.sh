@@ -44,7 +44,7 @@ function usage {
   echo "    Outputs Uploaded to s3: "
   echo "          <output_prefix>.fq.xxxx ... <output_prefix>.fq.yyyy"
   echo ""
-  echo 'ex: sudo docker run logan -v $HOME/.aws/logan:/home/logan/aws.csv -A -q dvr5.cm -f mdv.fa -o utest'
+  echo 'ex: sudo docker run logan -v ~/.aws/logan:/home/logan/aws.csv -A -q dvr5.cm -f mdv.fa -o utest'
   false
   exit 1
 }
@@ -71,9 +71,17 @@ THREADS='1'
 AWSCRED='FALSE'
 VERBOSE='FALSE'
 
+function log () {
+    if [[ $VERBOSE == 'TRUE' ]]
+    then
+        echo "$@"
+    fi
+}
+
 # Check if Array Job
 if [[ -z "${AWS_BATCH_JOB_ARRAY_INDEX-}" ]]
 then
+  log "Checking Array Job"
   AWS_BATCH_JOB_ARRAY_INDEX='n/a'
 fi
 
@@ -129,6 +137,7 @@ done
 # docker run logan -v $HOME/.aws/logan:/home/logan/aws.csv
 if [[ $AWSCRED == 'TRUE' ]]
 then
+  log "AWS Credentials manually passed to container."
   aws configure import --csv file:///home/logan/aws.csv
 fi
 
@@ -146,10 +155,10 @@ echo ""
 # Test for internet/s3 connectivity
 if [[ $VERBOSE == 'TRUE' ]]
 then 
-  echo 'Test Internet connectivity'
+  log 'Test Internet connectivity'
   wget https://serratus-public.s3.amazonaws.com/var/aws-test-token.jpg
 
-  echo 'Test AWS/S3 permissions '
+  log 'Test AWS/S3 permissions '
   aws s3 cp s3://serratus-public/var/aws-test-token.jpg ./
 fi
 
@@ -157,15 +166,16 @@ if [[ $FA == s3://* ]]
 then
   # NOTE: Consider implementing Mountpoint
   # https://github.com/awslabs/mountpoint-s3/tree/main
-  echo "S3 FA file provided"
+  log "S3 FA file provided"
   aws s3 cp $FA $OUTNAME.fa
   FA="$OUTNAME.fa"
 else
-  echo "Local FA file provided"
+  log "Local FA file provided"
 fi
 
 if [[ $VERBOSE == 'TRUE' ]]
-then 
+then
+  log "Run INFERNAL with time function" 
   # run INFERNAL
   /usr/bin/time -v cmsearch \
     -o /dev/null \
@@ -174,8 +184,6 @@ then
     $QUERY \
     $FA
 
-  # Cat output        
-  cat $OUTNAME.tblout
 else
   cmsearch \
     -o /dev/null \
@@ -185,18 +193,18 @@ else
     $FA
 fi
 
+# RUN UPLOAD ==============================================
 # If no output S3 Bucket is provided, print to STDOUT
 # Else upload the output to S3 bucket-dir
 if [[ $S3 == '' ]]
 then
-  # Output 
-  cat $OUTNAME.tblout
+  # Output
+  log "Output TBLOUT to STDOUT (Local Only)"
+  log $(cat $OUTNAME.tblout)
 else
 	#aws s3 cp --only-show-errors $OUTNAME.tblout $S3
-  echo "uploading output:"
-  echo "  aws s3 cp $OUTNAME.tblout $S3"
+  log "uploading output:"
+  log "  aws s3 cp --only-show-errors $OUTNAME.tblout $S3"
 	aws s3 cp $OUTNAME.tblout $S3
 fi
 
-# RUN UPLOAD ==============================================
-#aws s3 cp --only-show-errors $SRA.$BL_N.bam s3://$S3_BUCKET/bam-blocks/$SRA/
