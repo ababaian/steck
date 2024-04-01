@@ -7,7 +7,7 @@ Running this system costs real $'s in your AWS bill. Spot instances with local d
 
 ### Initialize `Steck`
 
-1. `1_deploy_container.sh` : Build the container defined in `env/Dockerfile`, importing reference sequence sets from `ref/`. Deploy the the `Steck` ECR.
+1. `1_deploy_container.sh push` : Build the container defined in `env/Dockerfile`, importing reference sequence sets from `ref/`. Deploy the the `Steck` ECR.
 
 2. `2_form_cloud.sh` : Build the `Steck-batch` cloud environment using CloudFormation YAML.
 
@@ -21,7 +21,7 @@ Running this system costs real $'s in your AWS bill. Spot instances with local d
 Where dest_bucket is the name of the destination bucket, and nb_jobs is the number of jobs to submit (can't exceed 10000). The more jobs, the faster it will be. Each job takes 1 vcpu and 1.5G memory. Destination bucket file structure is decided by the task.
 
 Tests
-- `env/0_container-test.sh` : Run a local unit test of the `steck-container`
+- `env/1_deploy_contiainer.sh test` : Run a local unit test of the `steck-container`
 - `env/0_run-test.sh` : Run a test of Batch jobs
 
 ### Clean-up

@@ -16,7 +16,7 @@ wiki/*
 
 # AWS gitignore ===========================================
 # local credentials file
-.env
+# env
 
 # Sublime
 *sublime*
